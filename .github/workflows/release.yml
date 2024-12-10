@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions: write-all
+    
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send feishu message
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          ACTIONS_FEISHU_TAG: 'v1.3.1' # 替换此变量, 最新见 https://github.com/xiachufang/actions-feishu/releases
+          INPUT_WEBHOOK: "${{ secrets.FEISHU_ROBOT_WEBHOOK_URL }}"
+          INPUT_MESSAGE_TYPE: "post"
+          INPUT_TITLE: "[烟花] New Release Published"
+          INPUT_CONTENT: |
+            repo: ${{ github.repository }}
+            tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+            body: ${{ steps.semantic.outputs.new_release_notes }}
+        run: |
+          wget -q https://github.com/xiachufang/actions-feishu/releases/download/v1.3.1/linux-amd64-actions-feishu.tar.gz
+          tar zxf linux-amd64-actions-feishu.tar.gz feishu
+          ./feishu
